@@ -124,25 +124,4 @@ public class GpsServices extends Service implements LocationListener, GpsStatus.
    
     @Override
     public void onStatusChanged(String provider, int status, Bundle extras) {}
-
-    class isStillStopped extends AsyncTask<Void, Integer, String> {
-        int timer = 0;
-        @Override
-        protected String doInBackground(Void... unused) {
-            try {
-                while (data.getCurSpeed() == 0) {
-                    Thread.sleep(1000);
-                    timer++;
-                }
-            } catch (InterruptedException t) {
-                return ("The sleep operation failed");
-            }
-            return ("return object when task is finished");
-        }
-
-        @Override
-        protected void onPostExecute(String message) {
-            data.setTimeStopped(timer);
-        }
-    }
 }
