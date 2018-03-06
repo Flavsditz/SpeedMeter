@@ -28,5 +28,6 @@
     <string name="source_code">GitHub</string>
     <string name="source_code_summary">Accès au code source.</string>
     <string name="version">Version de Speedmeter</string>
+    <string name="zeroedTime">00:00:00</string>
 
 </resources>
