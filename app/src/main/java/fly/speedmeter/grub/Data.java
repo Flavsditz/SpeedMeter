@@ -1,8 +1,5 @@
 package fly.speedmeter.grub;
 
-/**
- * Created by fly on 17/04/15.
- */
 public class Data {
     private boolean isRunning;
     private long time;
