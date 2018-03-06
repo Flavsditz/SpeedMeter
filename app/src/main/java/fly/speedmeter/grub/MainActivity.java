@@ -132,32 +132,28 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
             boolean isPair = true;
             @Override
             public void onChronometerTick(Chronometer chrono) {
-                long time;
-                if(data.isRunning()){
-                    time= SystemClock.elapsedRealtime() - chrono.getBase();
-                    data.setTime(time);
-                }else{
-                    time = data.getTime();
+                long timeInMS;
+                if (data.isRunning()) {
+                    timeInMS = SystemClock.elapsedRealtime() - chrono.getBase();
+                    data.setTime(timeInMS);
+                } else {
+                    timeInMS = data.getTime();
                 }
 
-                int h   = (int)(time /3600000);
-                int m = (int)(time  - h*3600000)/60000;
-                int s= (int)(time  - h*3600000 - m*60000)/1000 ;
-                String hh = h < 10 ? "0"+h: h+"";
-                String mm = m < 10 ? "0"+m: m+"";
-                String ss = s < 10 ? "0"+s: s+"";
-                chrono.setText(hh+":"+mm+":"+ss);
+                int s = (int) (timeInMS / 1000);
+                int m = s / 60;
+                int h = m / 60;
 
-                if (data.isRunning()){
-                    chrono.setText(hh+":"+mm+":"+ss);
-                } else {
-                    if (isPair) {
-                        isPair = false;
-                        chrono.setText(hh+":"+mm+":"+ss);
-                    }else{
-                        isPair = true;
+                int hh = h % 24;
+                int mm = m % 60;
+                int ss = s % 60;
+                chrono.setText(String.format(systemLocale, "%02d:%02d:%02d", hh, mm, ss));
+
+                if (!data.isRunning()) {
+                    if (!isPair) {
                         chrono.setText("");
                     }
+                    isPair = !isPair;
                 }
 
             }
