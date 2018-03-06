@@ -1,15 +1,13 @@
 package fly.speedmeter.grub;
 
-import android.content.BroadcastReceiver;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.Preference;
-import android.preference.PreferenceActivity;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceGroup;
-import android.support.v4.app.NavUtils;
 import android.support.v7.app.ActionBarActivity;
 import android.view.MenuItem;
+
+import java.util.Locale;
 
 public class Settings extends ActionBarActivity {
 
@@ -49,20 +47,25 @@ public class Settings extends ActionBarActivity {
 
             for (int i = 0; i < getPreferenceScreen().getPreferenceCount(); ++i) {
                 Preference preference = getPreferenceScreen().getPreference(i);
+
                 if (preference instanceof PreferenceGroup) {
-                    PreferenceGroup preferenceGroup = (PreferenceGroup) preference;
-                    for (int j = 0; j < preferenceGroup.getPreferenceCount(); ++j) {
-                        updatePreference(preferenceGroup.getPreference(j));
-                    }
+                    handlePreferenceGroup(preference);
                 } else {
                     updatePreference(preference);
                 }
             }
         }
 
+        private void handlePreferenceGroup(Preference preference) {
+            PreferenceGroup preferenceGroup = (PreferenceGroup) preference;
+            for (int j = 0; j < preferenceGroup.getPreferenceCount(); ++j) {
+                updatePreference(preferenceGroup.getPreference(j));
+            }
+        }
+
         private void updatePreference(Preference preference) {
             if (preference.getKey().equals("version")) {
-                preference.setSummary(String.format("v%s (%d)", BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE));
+                preference.setSummary(String.format(Locale.getDefault(), "v%s (%d)", BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE));
             }
         }
 
