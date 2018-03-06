@@ -15,10 +15,6 @@ public class Data {
 
     private onGpsServiceUpdate onGpsServiceUpdate;
 
-    public interface onGpsServiceUpdate{
-        public void update();
-    }
-
     public void setOnGpsServiceUpdate(onGpsServiceUpdate onGpsServiceUpdate){
         this.onGpsServiceUpdate = onGpsServiceUpdate;
     }
