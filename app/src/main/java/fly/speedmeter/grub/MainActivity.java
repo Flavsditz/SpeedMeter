@@ -10,6 +10,7 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.SystemClock;
 import android.preference.PreferenceManager;
+import android.support.annotation.NonNull;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
@@ -21,7 +22,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Chronometer;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.gc.materialdesign.views.ProgressBarCircularIndeterminate;
 import com.gc.materialdesign.widgets.Dialog;
@@ -33,13 +33,14 @@ import java.util.Locale;
 
 public class MainActivity extends ActionBarActivity implements LocationListener, GpsStatus.Listener {
 
-    private SharedPreferences  sharedPreferences;
-    private LocationManager mLocationManager;
+    private final double KM_TO_MILES = 0.62137119;
+
+    private SharedPreferences sharedPreferences;
+    private LocationManager locationManager;
     private static Data data;
 
-    private Toolbar toolbar;
-    private FloatingActionButton fab;
-    private FloatingActionButton refresh;
+    private FloatingActionButton startFab;
+    private FloatingActionButton refreshFab;
     private ProgressBarCircularIndeterminate progressBarCircularIndeterminate;
     private TextView satellite;
     private TextView status;
@@ -49,46 +50,41 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
     private TextView averageSpeed;
     private TextView distance;
     private Chronometer time;
-    private Data.onGpsServiceUpdate onGpsServiceUpdate;
+    private GpsServiceUpdate onGpsServiceUpdate;
 
     private boolean firstfix;
+
+    public static Locale systemLocale;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        data = new Data(onGpsServiceUpdate);
-
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+        locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
 
-        toolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
-        //setTitle("");
-        fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setVisibility(View.INVISIBLE);
+        findAndAssignAllViews();
+        configureUIElements();
 
-        refresh = (FloatingActionButton) findViewById(R.id.refresh);
-        refresh.setVisibility(View.INVISIBLE);
-
-        onGpsServiceUpdate = new Data.onGpsServiceUpdate() {
+        onGpsServiceUpdate = new GpsServiceUpdate() {
             @Override
             public void update() {
                 double maxSpeedTemp = data.getMaxSpeed();
                 double distanceTemp = data.getDistance();
                 double averageTemp;
-                if (sharedPreferences.getBoolean("auto_average", false)){
+                if (sharedPreferences.getBoolean("auto_average", false)) {
                     averageTemp = data.getAverageSpeedMotion();
-                }else{
+                } else {
                     averageTemp = data.getAverageSpeed();
                 }
 
                 String speedUnits;
                 String distanceUnits;
                 if (sharedPreferences.getBoolean("miles_per_hour", false)) {
-                    maxSpeedTemp *= 0.62137119;
-                    distanceTemp = distanceTemp / 1000.0 * 0.62137119;
-                    averageTemp *= 0.62137119;
+                    maxSpeedTemp *= KM_TO_MILES;
+                    distanceTemp = distanceTemp / 1000.0 * KM_TO_MILES;
+                    averageTemp *= KM_TO_MILES;
                     speedUnits = "mi/h";
                     distanceUnits = "mi";
                 } else {
@@ -101,22 +97,31 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
                     }
                 }
 
-                SpannableString s = new SpannableString(String.format("%.0f", maxSpeedTemp) + speedUnits);
-                s.setSpan(new RelativeSizeSpan(0.5f), s.length() - 4, s.length(), 0);
+                SpannableString s = createSpannableStringFor(maxSpeedTemp, speedUnits);
                 maxSpeed.setText(s);
 
-                s = new SpannableString(String.format("%.0f", averageTemp) + speedUnits);
-                s.setSpan(new RelativeSizeSpan(0.5f), s.length() - 4, s.length(), 0);
+                s = createSpannableStringFor(averageTemp, speedUnits);
                 averageSpeed.setText(s);
 
-                s = new SpannableString(String.format("%.3f", distanceTemp) + distanceUnits);
+                s = new SpannableString(String.format(systemLocale, "%.3f", distanceTemp) + distanceUnits);
                 s.setSpan(new RelativeSizeSpan(0.5f), s.length() - 2, s.length(), 0);
                 distance.setText(s);
             }
+
+            @NonNull
+            private SpannableString createSpannableStringFor(final double value, final String units) {
+                SpannableString s = new SpannableString(String.format(systemLocale, "%.0f", value) + units);
+                s.setSpan(new RelativeSizeSpan(0.5f), s.length() - 4, s.length(), 0);
+                return s;
+            }
         };
 
-        mLocationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+        data = new Data(onGpsServiceUpdate);
+    }
 
+    private void findAndAssignAllViews() {
+        startFab = (FloatingActionButton) findViewById(R.id.fab);
+        refreshFab = (FloatingActionButton) findViewById(R.id.refresh);
         satellite = (TextView) findViewById(R.id.satellite);
         status = (TextView) findViewById(R.id.status);
         accuracy = (TextView) findViewById(R.id.accuracy);
@@ -126,10 +131,19 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
         time = (Chronometer) findViewById(R.id.time);
         currentSpeed = (TextView) findViewById(R.id.currentSpeed);
         progressBarCircularIndeterminate = (ProgressBarCircularIndeterminate) findViewById(R.id.progressBarCircularIndeterminate);
+        systemLocale = Locale.getDefault();
+    }
 
-        time.setText("00:00:00");
+    private void configureUIElements() {
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+        startFab.setVisibility(View.INVISIBLE);
+        refreshFab.setVisibility(View.INVISIBLE);
+
+        time.setText(R.string.zeroedTime);
         time.setOnChronometerTickListener(new Chronometer.OnChronometerTickListener() {
             boolean isPair = true;
+
             @Override
             public void onChronometerTick(Chronometer chrono) {
                 long timeInMS;
@@ -160,25 +174,25 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
         });
     }
 
-    public void onFabClick(View v){
+    public void onFabClick(View v) {
         if (!data.isRunning()) {
-            fab.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_pause));
+            startFab.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_pause));
             data.setRunning(true);
             time.setBase(SystemClock.elapsedRealtime() - data.getTime());
             time.start();
             data.setFirstTime(true);
             startService(new Intent(getBaseContext(), GpsServices.class));
-            refresh.setVisibility(View.INVISIBLE);
-        }else{
-            fab.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_play));
+            refreshFab.setVisibility(View.INVISIBLE);
+        } else {
+            startFab.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_play));
             data.setRunning(false);
             status.setText("");
             stopService(new Intent(getBaseContext(), GpsServices.class));
-            refresh.setVisibility(View.VISIBLE);
+            refreshFab.setVisibility(View.VISIBLE);
         }
     }
 
-    public void onRefreshClick(View v){
+    public void onRefreshClick(View v) {
         resetData();
         stopService(new Intent(getBaseContext(), GpsServices.class));
     }
@@ -187,44 +201,44 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
     protected void onResume() {
         super.onResume();
         firstfix = true;
-        if (!data.isRunning()){
+        if (!data.isRunning()) {
             Gson gson = new Gson();
             String json = sharedPreferences.getString("data", "");
             data = gson.fromJson(json, Data.class);
         }
-        if (data == null){
+        if (data == null) {
             data = new Data(onGpsServiceUpdate);
-        }else{
+        } else {
             data.setOnGpsServiceUpdate(onGpsServiceUpdate);
         }
 
-        if (mLocationManager.getAllProviders().indexOf(LocationManager.GPS_PROVIDER) >= 0) {
-            mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 500, 0, this);
+        if (locationManager.getAllProviders().indexOf(LocationManager.GPS_PROVIDER) >= 0) {
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 500, 0, this);
         } else {
             Log.w("MainActivity", "No GPS location provider found. GPS data display will not be available.");
         }
 
-        if (!mLocationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+        if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             showGpsDisabledDialog();
         }
 
-        mLocationManager.addGpsStatusListener(this);
+        locationManager.addGpsStatusListener(this);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        mLocationManager.removeUpdates(this);
-        mLocationManager.removeGpsStatusListener(this);
+        locationManager.removeUpdates(this);
+        locationManager.removeGpsStatusListener(this);
         SharedPreferences.Editor prefsEditor = sharedPreferences.edit();
         Gson gson = new Gson();
         String json = gson.toJson(data);
         prefsEditor.putString("data", json);
-        prefsEditor.commit();
+        prefsEditor.apply();
     }
 
     @Override
-    public void onDestroy(){
+    public void onDestroy() {
         super.onDestroy();
         stopService(new Intent(getBaseContext(), GpsServices.class));
     }
@@ -257,19 +271,19 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
     @Override
     public void onLocationChanged(Location location) {
         if (location.hasAccuracy()) {
-            SpannableString s = new SpannableString(String.format("%.0f", location.getAccuracy()) + "m");
-            s.setSpan(new RelativeSizeSpan(0.75f), s.length()-1, s.length(), 0);
+            SpannableString s = new SpannableString(String.format(systemLocale, "%.0f", location.getAccuracy()) + "m");
+            s.setSpan(new RelativeSizeSpan(0.75f), s.length() - 1, s.length(), 0);
             accuracy.setText(s);
 
-            if (firstfix){
+            if (firstfix) {
                 status.setText("");
-                fab.setVisibility(View.VISIBLE);
+                startFab.setVisibility(View.VISIBLE);
                 if (!data.isRunning() && !maxSpeed.getText().equals("")) {
-                    refresh.setVisibility(View.VISIBLE);
+                    refreshFab.setVisibility(View.VISIBLE);
                 }
                 firstfix = false;
             }
-        }else{
+        } else {
             firstfix = true;
         }
 
@@ -278,19 +292,19 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
             String speed = String.format(Locale.ENGLISH, "%.0f", location.getSpeed() * 3.6) + "km/h";
 
             if (sharedPreferences.getBoolean("miles_per_hour", false)) { // Convert to MPH
-                speed = String.format(Locale.ENGLISH, "%.0f", location.getSpeed() * 3.6 * 0.62137119) + "mi/h";
+                speed = String.format(Locale.ENGLISH, "%.0f", location.getSpeed() * 3.6 * KM_TO_MILES) + "mi/h";
             }
             SpannableString s = new SpannableString(speed);
-            s.setSpan(new RelativeSizeSpan(0.25f), s.length()-4, s.length(), 0);
+            s.setSpan(new RelativeSizeSpan(0.25f), s.length() - 4, s.length(), 0);
             currentSpeed.setText(s);
         }
 
     }
 
-    public void onGpsStatusChanged (int event) {
+    public void onGpsStatusChanged(int event) {
         switch (event) {
             case GpsStatus.GPS_EVENT_SATELLITE_STATUS:
-                GpsStatus gpsStatus = mLocationManager.getGpsStatus(null);
+                GpsStatus gpsStatus = locationManager.getGpsStatus(null);
                 int satsInView = 0;
                 int satsUsed = 0;
                 Iterable<GpsSatellite> sats = gpsStatus.getSatellites();
@@ -300,14 +314,14 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
                         satsUsed++;
                     }
                 }
-                satellite.setText(String.valueOf(satsUsed) + "/" + String.valueOf(satsInView));
+                satellite.setText(String.format(systemLocale, "%d/%d", satsUsed, satsInView));
                 if (satsUsed == 0) {
-                    fab.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_play));
+                    startFab.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_play));
                     data.setRunning(false);
                     status.setText("");
                     stopService(new Intent(getBaseContext(), GpsServices.class));
-                    fab.setVisibility(View.INVISIBLE);
-                    refresh.setVisibility(View.INVISIBLE);
+                    startFab.setVisibility(View.INVISIBLE);
+                    refreshFab.setVisibility(View.INVISIBLE);
                     accuracy.setText("");
                     status.setText(getResources().getString(R.string.waiting_for_fix));
                     firstfix = true;
@@ -315,7 +329,7 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
                 break;
 
             case GpsStatus.GPS_EVENT_STOPPED:
-                if (!mLocationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
                     showGpsDisabledDialog();
                 }
                 break;
@@ -324,7 +338,7 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
         }
     }
 
-    public void showGpsDisabledDialog(){
+    public void showGpsDisabledDialog() {
         Dialog dialog = new Dialog(this, getResources().getString(R.string.gps_disabled), getResources().getString(R.string.please_enable_gps));
 
         dialog.setOnAcceptButtonClickListener(new View.OnClickListener() {
@@ -336,14 +350,14 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
         dialog.show();
     }
 
-    public void resetData(){
-        fab.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_play));
-        refresh.setVisibility(View.INVISIBLE);
+    public void resetData() {
+        startFab.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_play));
+        refreshFab.setVisibility(View.INVISIBLE);
         time.stop();
         maxSpeed.setText("");
         averageSpeed.setText("");
         distance.setText("");
-        time.setText("00:00:00");
+        time.setText(R.string.zeroedTime);
         data = new Data(onGpsServiceUpdate);
     }
 
@@ -351,7 +365,7 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
         return data;
     }
 
-    public void onBackPressed(){
+    public void onBackPressed() {
         Intent a = new Intent(Intent.ACTION_MAIN);
         a.addCategory(Intent.CATEGORY_HOME);
         a.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -359,11 +373,14 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
     }
 
     @Override
-    public void onStatusChanged(String s, int i, Bundle bundle) {}
+    public void onStatusChanged(String s, int i, Bundle bundle) {
+    }
 
     @Override
-    public void onProviderEnabled(String s) {}
+    public void onProviderEnabled(String s) {
+    }
 
     @Override
-    public void onProviderDisabled(String s) {}
+    public void onProviderDisabled(String s) {
+    }
 }

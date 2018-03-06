@@ -6,27 +6,22 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.location.GpsStatus;
-import android.location.GpsStatus.Listener;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.util.Log;
 
 public class GpsServices extends Service implements LocationListener, GpsStatus.Listener {
-    private LocationManager mLocationManager;
+    private LocationManager locationManager;
 
-    Location lastlocation = new Location("last");
-    Data data;
+    private Data data;
 
-    double currentLon=0 ;
-    double currentLat=0 ;
-    double lastLon = 0;
-    double lastLat = 0;
+    private Location lastLocation = new Location("last");
+    private double lastLon = 0;
+    private double lastLat = 0;
 
-    PendingIntent contentIntent;
+    private PendingIntent contentIntent;
 
 
     @Override
@@ -39,16 +34,39 @@ public class GpsServices extends Service implements LocationListener, GpsStatus.
 
         updateNotification(false);
 
-        mLocationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-        mLocationManager.addGpsStatusListener( this);
-        mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 500, 0, this);
+        locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+        if(locationManager != null) {
+            locationManager.addGpsStatusListener(this);
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 500, 0, this);
+        }
     }
 
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        // If we get killed, after returning from here, restart
+        return START_STICKY;
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        // We don't provide binding, so return null
+        return null;
+    }
+
+    /* Remove the locationListener updates when Services is stopped */
+    @Override
+    public void onDestroy() {
+        locationManager.removeUpdates(this);
+        locationManager.removeGpsStatusListener(this);
+        stopForeground(true);
+    }
+
+    @Override
     public void onLocationChanged(Location location) {
         data = MainActivity.getData();
         if (data.isRunning()){
-            currentLat = location.getLatitude();
-            currentLon = location.getLongitude();
+            double currentLat = location.getLatitude();
+            double currentLon = location.getLongitude();
 
             if (data.isFirstTime()){
                 lastLat = currentLat;
@@ -56,9 +74,9 @@ public class GpsServices extends Service implements LocationListener, GpsStatus.
                 data.setFirstTime(false);
             }
 
-            lastlocation.setLatitude(lastLat);
-            lastlocation.setLongitude(lastLon);
-            double distance = lastlocation.distanceTo(location);
+            lastLocation.setLatitude(lastLat);
+            lastLocation.setLongitude(lastLon);
+            double distance = lastLocation.distanceTo(location);
 
             if (location.getAccuracy() < distance){
                 data.addDistance(distance);
@@ -68,9 +86,9 @@ public class GpsServices extends Service implements LocationListener, GpsStatus.
             }
 
             if (location.hasSpeed()) {
-                data.setCurSpeed(location.getSpeed() * 3.6);
+                data.setCurrentSpeed(location.getSpeed() * 3.6);
                 if(location.getSpeed() == 0){
-                    new isStillStopped().execute();
+                    new Stopped(data).execute();
                 }
             }
             data.update();
@@ -78,39 +96,19 @@ public class GpsServices extends Service implements LocationListener, GpsStatus.
         }
     }
 
-    public void updateNotification(boolean asData){
+    private void updateNotification(boolean asData){
         Notification.Builder builder = new Notification.Builder(getBaseContext())
                 .setContentTitle(getString(R.string.running))
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentIntent(contentIntent);
 
         if(asData){
-            builder.setContentText(String.format(getString(R.string.notification), data.getMaxSpeed(), data.getDistance()));
+            builder.setContentText(String.format(getString(R.string.notification), String.valueOf(data.getMaxSpeed()), String.valueOf(data.getDistance())));
         }else{
             builder.setContentText(String.format(getString(R.string.notification), '-', '-'));
         }
         Notification notification = builder.build();
         startForeground(R.string.noti_id, notification);
-    }
-
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        // If we get killed, after returning from here, restart
-        return START_STICKY;
-    }   
-       
-    @Override
-    public IBinder onBind(Intent intent) {
-        // We don't provide binding, so return null
-        return null;
-    }
-   
-    /* Remove the locationlistener updates when Services is stopped */
-    @Override
-    public void onDestroy() {
-        mLocationManager.removeUpdates(this);
-        mLocationManager.removeGpsStatusListener(this);
-        stopForeground(true);
     }
 
     @Override
