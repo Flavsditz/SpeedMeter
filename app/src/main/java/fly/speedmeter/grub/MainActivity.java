@@ -30,10 +30,10 @@ import com.melnykov.fab.FloatingActionButton;
 
 import java.util.Locale;
 
+import static fly.speedmeter.grub.Units.*;
+
 
 public class MainActivity extends ActionBarActivity implements LocationListener, GpsStatus.Listener {
-
-    private final double KM_TO_MILES = 0.62137119;
 
     private SharedPreferences sharedPreferences;
     private LocationManager locationManager;
@@ -85,15 +85,15 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
                     maxSpeedTemp *= KM_TO_MILES;
                     distanceTemp = distanceTemp / 1000.0 * KM_TO_MILES;
                     averageTemp *= KM_TO_MILES;
-                    speedUnits = "mi/h";
-                    distanceUnits = "mi";
+                    speedUnits = MI_H;
+                    distanceUnits = MILES;
                 } else {
-                    speedUnits = "km/h";
+                    speedUnits = KM_H;
                     if (distanceTemp <= 1000.0) {
-                        distanceUnits = "m";
+                        distanceUnits = METERS;
                     } else {
                         distanceTemp /= 1000.0;
-                        distanceUnits = "km";
+                        distanceUnits = KM;
                     }
                 }
 
@@ -271,7 +271,7 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
     @Override
     public void onLocationChanged(Location location) {
         if (location.hasAccuracy()) {
-            SpannableString s = new SpannableString(String.format(systemLocale, "%.0f", location.getAccuracy()) + "m");
+            SpannableString s = new SpannableString(String.format(systemLocale, "%.0f", location.getAccuracy()) + METERS);
             s.setSpan(new RelativeSizeSpan(0.75f), s.length() - 1, s.length(), 0);
             accuracy.setText(s);
 
@@ -289,10 +289,10 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
 
         if (location.hasSpeed()) {
             progressBarCircularIndeterminate.setVisibility(View.GONE);
-            String speed = String.format(Locale.ENGLISH, "%.0f", location.getSpeed() * 3.6) + "km/h";
+            String speed = String.format(Locale.ENGLISH, "%.0f", location.getSpeed() * 3.6) + KM_H;
 
             if (sharedPreferences.getBoolean("miles_per_hour", false)) { // Convert to MPH
-                speed = String.format(Locale.ENGLISH, "%.0f", location.getSpeed() * 3.6 * KM_TO_MILES) + "mi/h";
+                speed = String.format(Locale.ENGLISH, "%.0f", location.getSpeed() * 3.6 * KM_TO_MILES) + MI_H;
             }
             SpannableString s = new SpannableString(speed);
             s.setSpan(new RelativeSizeSpan(0.25f), s.length() - 4, s.length(), 0);
