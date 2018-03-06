@@ -6,104 +6,102 @@ public class Data {
     private long timeStopped;
     private boolean isFirstTime;
 
-    private double distanceM;
-    private double curSpeed;
+    private double distanceMeters;
+    private double currentSpeed;
     private double maxSpeed;
 
-    private onGpsServiceUpdate onGpsServiceUpdate;
+    private GpsServiceUpdate onGpsServiceUpdate;
 
-    public void setOnGpsServiceUpdate(onGpsServiceUpdate onGpsServiceUpdate){
-        this.onGpsServiceUpdate = onGpsServiceUpdate;
-    }
-
-    public void update(){
-        onGpsServiceUpdate.update();
-    }
-
-    public Data() {
+    private Data() {
         isRunning = false;
-        distanceM = 0;
-        curSpeed = 0;
+        distanceMeters = 0;
+        currentSpeed = 0;
         maxSpeed = 0;
         timeStopped = 0;
     }
 
-    public Data(onGpsServiceUpdate onGpsServiceUpdate){
+    Data(GpsServiceUpdate onGpsServiceUpdate){
         this();
         setOnGpsServiceUpdate(onGpsServiceUpdate);
     }
 
-    public void addDistance(double distance){
-        distanceM = distanceM + distance;
+    void setOnGpsServiceUpdate(GpsServiceUpdate onGpsServiceUpdate){
+        this.onGpsServiceUpdate = onGpsServiceUpdate;
+    }
+
+    void update(){
+        onGpsServiceUpdate.update();
+    }
+
+    void addDistance(double distance){
+        distanceMeters = distanceMeters + distance;
     }
 
     public double getDistance(){
-        return distanceM;
+        return distanceMeters;
     }
 
-    public double getMaxSpeed() {
+    double getMaxSpeed() {
         return maxSpeed;
     }
 
-    public double getAverageSpeed(){
+    double getAverageSpeed(){
         double average;
-        String units;
         if (time <= 0) {
             average = 0.0;
         } else {
-            average = (distanceM / (time / 1000)) * 3.6;
+            average = (distanceMeters / time) * 3600;
         }
         return average;
     }
 
-    public double getAverageSpeedMotion(){
+    double getAverageSpeedMotion(){
         double motionTime = time - timeStopped;
         double average;
-        String units;
         if (motionTime <= 0){
             average = 0.0;
         } else {
-            average = (distanceM / (motionTime / 1000)) * 3.6;
+            average = (distanceMeters / motionTime) * 3600;
         }
         return average;
     }
 
-    public void setCurSpeed(double curSpeed) {
-        this.curSpeed = curSpeed;
-        if (curSpeed > maxSpeed){
-            maxSpeed = curSpeed;
+    void setCurrentSpeed(double currentSpeed) {
+        this.currentSpeed = currentSpeed;
+        if (currentSpeed > maxSpeed){
+            maxSpeed = currentSpeed;
         }
     }
 
-    public boolean isFirstTime() {
+    boolean isFirstTime() {
         return isFirstTime;
     }
 
-    public void setFirstTime(boolean isFirstTime) {
+    void setFirstTime(boolean isFirstTime) {
         this.isFirstTime = isFirstTime;
     }
 
-    public boolean isRunning() {
+    boolean isRunning() {
         return isRunning;
     }
 
-    public void setRunning(boolean isRunning) {
+    void setRunning(boolean isRunning) {
         this.isRunning = isRunning;
     }
 
-    public void setTimeStopped(long timeStopped) {
+    void setTimeStopped(long timeStopped) {
         this.timeStopped += timeStopped;
     }
 
-    public double getCurSpeed() {
-        return curSpeed;
+    double getCurrentSpeed() {
+        return currentSpeed;
     }
 
-    public long getTime() {
+    long getTime() {
         return time;
     }
 
-    public void setTime(long time) {
+    void setTime(long time) {
         this.time = time;
     }
 }
